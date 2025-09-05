@@ -1,4 +1,3 @@
-# remotes::install_github("mrc-ide/weave@pcg")
 source("R/simulate.R")
 library(weave)
 library(progress)
