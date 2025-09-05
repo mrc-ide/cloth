@@ -1,6 +1,4 @@
 # remotes::install_github("mrc-ide/weave@pcg")
-source("R/missing.R")
-source("R/simulate.R")
 library(weave)
 library(progress)
 library(ggplot2)
@@ -25,15 +23,15 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 25
+n = 210
 # Number of timesteps
 nt = 52 * 5
 # Site mean case count
-site_means = round(runif(n, 10, 100))
+site_means = round(runif(n, 2, 100))
 # length_scale: determines how quickly correlation decays with distance
 #   - higher length_scale: correlation persists over longer distances (smoother spatial variation)
 #   - lower length_scale: correlation decays rapidly, indicating localised variation
-length_scale <- 10
+length_scale <- 2
 # periodic_scale: strength of repeating (seasonal or cyclical) patterns
 #   - higher periodic_scale: stronger seasonal patterns
 #   - lower periodic_scale: weaker seasonal patterns
@@ -41,17 +39,17 @@ periodic_scale = 1
 # long_term_scale: scale controlling decay rate of long-term temporal correlation
 #   - higher long_term_scale: smoother long-term trends (correlation persists longer)
 #   - lower long_term_scale: rapid loss of correlation, short-term variation dominates
-long_term_scale = 52
+long_term_scale = 100
 # period: duration of the repeating cycle (e.g., 52 weeks for annual seasonality)
 period = 52
 # p_one: probability that a new cluster begins with a missing value.
 #   - higher p_one: more missing data overall.
 #   - lower p_one: less missing data overall.
-p_one = 0
+p_one = 0.25
 # p_switch: probability of switching between missing and observed states.
 #   - lower p_switch: longer sequences (clusters) of missingness or non-missingness.
 #   - higher p_switch: shorter clusters, more frequent switching between states.
-p_switch = 0
+p_switch = 0.2
 # ------------------------------------------------------------------------------
 
 # Simulated data ---------------------------------------------------------------
@@ -82,11 +80,8 @@ true_data <- simulate_data(
   time_k = time_k
 )
 
-obs_data <- true_data |>
-  mutate(
-    y = ifelse(t > 200, NA, y)
-  ) |>
-  observed_data(
+obs_data <- observed_data(
+  data = true_data,
   p_one = p_one,
   p_switch = p_switch
 )
@@ -167,5 +162,8 @@ fit_plot <- sim_data +
     data = fit_data,
     aes(x = t, y = data_Q50, col = id), linewidth = 1
   ) +
-  ggtitle("Near term forecasting")
-fit_plot
+  ggtitle("Filling missingness")
+#fit_plot
+
+ggsave("plots/fit_plot_large_test.pdf",fit_plot, width = 30, height = 20, limitsize = FALSE)
+

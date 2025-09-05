@@ -1,4 +1,6 @@
-remotes::install_github("mrc-ide/weave@pcg")
+# remotes::install_github("mrc-ide/weave@pcg")
+source("R/missing.R")
+source("R/simulate.R")
 library(weave)
 library(progress)
 library(ggplot2)
@@ -23,7 +25,7 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 42
+n = 25
 # Number of timesteps
 nt = 52 * 5
 # Site mean case count
@@ -162,7 +164,7 @@ roc_pd <- as.data.frame(roc_obj[c("thresholds", "sensitivities", "specificities"
 roc_plot <- ggplot(data = roc_pd, aes(x = specificities, y = sensitivities)) +
   geom_abline(slope = 1, intercept = 1, linetype = 2, col = "grey50") +
   geom_line(col = "chartreuse3", linewidth = 1) +
-  geom_label(aes(x = 0.1, y = 0.1), label = auc_value) +
+  #geom_label(aes(x = 0.1, y = 0.1), label = auc_value) +
   xlim(1, 0) +
   xlab("Specificity") +
   ylab("Sensitivity") +
@@ -173,11 +175,15 @@ best_thr <- pROC::coords(roc_obj, x = "best", best.method = "youden", transpose 
 
 obs_data$surprisal <- fit_data$surprisal
 
+ggplot(data= obs_data, aes(x= factor(outlier), y = surprisal)) +
+  geom_jitter(alpha = 0.3) +
+  geom_boxplot(fill = NA)
+
 sim_data <- ggplot() +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
   geom_point(data = obs_data, aes(x = t, y = y_obs, colour = surprisal, size = surprisal)) +
   geom_point(
-    data = dplyr::filter(obs_data, detected_outlier == 1),
+    data = dplyr::filter(obs_data, outlier == 1),
     aes(x = t, y = y_obs),
     shape = 19, size = 1, colour = "chartreuse3"
   ) +
@@ -194,3 +200,6 @@ sim_data <- ggplot() +
     panel.spacing = unit(0.5, "lines")
   ) +
   ggtitle("Simulated data")
+
+
+

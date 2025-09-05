@@ -1,4 +1,6 @@
-remotes::install_github("mrc-ide/weave@pcg")
+# remotes::install_github("mrc-ide/weave@pcg")
+source("R/missing.R")
+source("R/simulate.R")
 library(weave)
 library(progress)
 library(ggplot2)
@@ -23,15 +25,15 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 4
+n = 25
 # Number of timesteps
 nt = 52 * 3
 # Site mean case count
-site_means = round(runif(n, 10, 100))
+site_means = round(runif(n, 2, 100))
 # length_scale: determines how quickly correlation decays with distance
 #   - higher length_scale: correlation persists over longer distances (smoother spatial variation)
 #   - lower length_scale: correlation decays rapidly, indicating localised variation
-length_scale <- 10
+length_scale <- 2
 # periodic_scale: strength of repeating (seasonal or cyclical) patterns
 #   - higher periodic_scale: stronger seasonal patterns
 #   - lower periodic_scale: weaker seasonal patterns
@@ -39,7 +41,7 @@ periodic_scale = 1
 # long_term_scale: scale controlling decay rate of long-term temporal correlation
 #   - higher long_term_scale: smoother long-term trends (correlation persists longer)
 #   - lower long_term_scale: rapid loss of correlation, short-term variation dominates
-long_term_scale = 300
+long_term_scale = 100
 # period: duration of the repeating cycle (e.g., 52 weeks for annual seasonality)
 period = 52
 # p_one: probability that a new cluster begins with a missing value.
@@ -164,5 +166,19 @@ fit_plot <- sim_data +
   ) +
   ggtitle("Filling missingness")
 fit_plot
+
+compare_pd <- data.frame(
+  Modelled = fit_data$data_Q50,
+  True = true_data$y,
+  type = factor(ifelse(is.na(fit_data$y_obs), "Missing", "Observed"), levels = c("Observed", "Missing"))
+)
+
+ggplot() +
+  geom_point(data = compare_pd, aes(x = True, y = Modelled, colour = type, alpha = type), shape = 19) +
+  geom_abline(intercept = 0, slope = 1) +
+  scale_colour_manual(values = c("chartreuse3", "darkmagenta")) +
+  scale_alpha_manual(values = c(0.25, 1)) +
+  theme_bw()
+
 # ggsave("plots/fit_plot_large_test.pdf",fit_plot, width = 30, height = 20, limitsize = FALSE)
 
