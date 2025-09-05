@@ -1,5 +1,4 @@
 # remotes::install_github("mrc-ide/weave@pcg")
-source("R/missing.R")
 source("R/simulate.R")
 library(weave)
 library(progress)
@@ -117,7 +116,7 @@ hf_labeller <- function(value) {
   paste("HF:", value)
 }
 
-sim_data <- ggplot() +
+sim_plot <- ggplot() +
   geom_point(data = true_data, aes(x = t, y = y), size = 1, colour = "red") +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 1, colour = "black") +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
@@ -151,7 +150,7 @@ system.time({
 })
 
 
-fit_plot <- sim_data +
+fit_plot <- sim_plot +
   geom_ribbon(
     data = fit_data,
     aes(x = t, ymin = pred_Q2.5, ymax = pred_Q97.5, fill = id), alpha = 0.25
@@ -173,12 +172,11 @@ compare_pd <- data.frame(
   type = factor(ifelse(is.na(fit_data$y_obs), "Missing", "Observed"), levels = c("Observed", "Missing"))
 )
 
-ggplot() +
+comp_plot <- ggplot() +
   geom_point(data = compare_pd, aes(x = True, y = Modelled, colour = type, alpha = type), shape = 19) +
   geom_abline(intercept = 0, slope = 1) +
   scale_colour_manual(values = c("chartreuse3", "darkmagenta")) +
   scale_alpha_manual(values = c(0.25, 1)) +
   theme_bw()
 
-# ggsave("plots/fit_plot_large_test.pdf",fit_plot, width = 30, height = 20, limitsize = FALSE)
 

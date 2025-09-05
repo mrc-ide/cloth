@@ -1,5 +1,4 @@
 # remotes::install_github("mrc-ide/weave@pcg")
-source("R/missing.R")
 source("R/simulate.R")
 library(weave)
 library(progress)
@@ -44,14 +43,12 @@ periodic_scale = 1
 long_term_scale = 300
 # period: duration of the repeating cycle (e.g., 52 weeks for annual seasonality)
 period = 52
-# p_one: probability that a new cluster begins with a missing value.
-#   - higher p_one: more missing data overall.
-#   - lower p_one: less missing data overall.
-p_one = 0
-# p_switch: probability of switching between missing and observed states.
-#   - lower p_switch: longer sequences (clusters) of missingness or non-missingness.
-#   - higher p_switch: shorter clusters, more frequent switching between states.
-p_switch = 0
+# m_one: prob of outlier
+m_one = 0.02
+# m_switch: probability of switching between missing and observed states.
+m_switch = 1
+# Outlier factor
+m_factor = 2
 # ------------------------------------------------------------------------------
 
 # Simulated data ---------------------------------------------------------------
@@ -82,18 +79,16 @@ true_data <- simulate_data(
   time_k = time_k
 )
 
-make_outlier <- sample(1:nrow(true_data), 50)
-true_data$y[make_outlier] <- true_data$y[make_outlier] * 2
+#make_outlier <- sample(1:nrow(true_data), 50)
+#true_data$y[make_outlier] <- true_data$y[make_outlier] * 2
 
 obs_data <- true_data |>
   observed_data(
-    p_one = 0,
-    p_switch = 0
-  ) |>
-  mutate(
-    outlier = 0
+    m_one = m_one,
+    m_switch = m_switch,
+    m_factor = m_factor
   )
-obs_data$outlier[make_outlier] <- 1
+#obs_data$outlier[make_outlier] <- 1
 
 space_pd <- data.frame(
   distance = 1:100
@@ -124,9 +119,9 @@ hf_labeller <- function(value) {
   paste("HF:", value)
 }
 
-sim_data <- ggplot() +
-  geom_point(data = true_data, aes(x = t, y = y), size = 1, colour = "red") +
+sim_plot <- ggplot() +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 1, colour = "black") +
+  geom_point(data = filter(obs_data, outlier == 1), aes(x = t, y = y_obs), size = 1, colour = "red") +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
   facet_wrap(~ id, scales = "free_y", labeller = labeller(id = hf_labeller)) +
   ylab("Cases") +
@@ -179,7 +174,7 @@ ggplot(data= obs_data, aes(x= factor(outlier), y = surprisal)) +
   geom_jitter(alpha = 0.3) +
   geom_boxplot(fill = NA)
 
-sim_data <- ggplot() +
+sim_plot <- ggplot() +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
   geom_point(data = obs_data, aes(x = t, y = y_obs, colour = surprisal, size = surprisal)) +
   geom_point(

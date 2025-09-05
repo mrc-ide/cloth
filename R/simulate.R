@@ -1,3 +1,37 @@
+#' Generate clustered binary sequence
+#'
+#' Creates a binary vector of length `n` where consecutive values tend to
+#' cluster. Values are freshly drawn using `p_one` when a new cluster starts and
+#' otherwise repeat the previous value.
+#'
+#' @param n Number of draws to generate.
+#' @param p_one Probability that a new cluster begins with a one. Also used for
+#'   the first draw.
+#' @param p_switch Probability of switching to a new cluster at each step.
+#'
+#' @return Numeric vector of 0s and 1s.
+#'
+#' @details Randomness is generated using [stats::rbinom()] and
+#'   [stats::runif()]. Set a seed via [set.seed()] for reproducible results.
+#'
+#' @examples
+#' set.seed(1)
+#' generate_clustered_binary(5, 0.2, 0.1)
+#'
+#' @export
+generate_clustered_binary <- function(n, p_one, p_switch) {
+  result <- numeric(n)
+  result[1] <- rbinom(1, 1, p_one)
+  for (i in 2:n) {
+    if (runif(1) < p_switch) {
+      result[i] <- rbinom(1, 1, p_one)
+    } else {
+      result[i] <- result[i - 1]
+    }
+  }
+  return(result)
+}
+
 #' Simulate spatiotemporal case counts
 #'
 #' This function generates synthetic case count data under a spatiotemporal
@@ -62,6 +96,7 @@ simulate_data <- function(
 #'   value.
 #' @param p_switch Probability of switching between missing and observed
 #'   clusters.
+#' @param end Add NAs to end of sequence, for testing forecasting
 #'
 #' @return Tibble with observed counts `y_obs` and inferred `mu_infer`,
 #'   `z_infer` and `f_infer`.
@@ -71,12 +106,18 @@ simulate_data <- function(
 #'   results.
 #'
 #' @export
-observed_data <- function(data, p_one, p_switch) {
+observed_data <- function(data, p_one = 0, p_switch = 0, end = 0, m_one = 0, m_switch = 0, m_factor = 1) {
   data |>
     dplyr::mutate(
       y_obs = .data$y,
+      # Add missingness
       missing = generate_clustered_binary(dplyr::n(), p_one, p_switch),
-      y_obs = ifelse(missing == 1, NA, .data$y_obs)
+      y_obs = ifelse(missing == 1, NA, .data$y_obs),
+      # Add NAs at end (for forecasting)
+      y_obs = ifelse(t > (max(t) - end), NA, .data$y_obs),
+      # Add outliers
+      outlier = generate_clustered_binary(dplyr::n(), m_one, m_switch),
+      y_obs = round(ifelse(outlier == 1, y_obs * sample(c(m_factor, 1 / m_factor), sum(outlier), replace = TRUE), y_obs))
     ) |>
     dplyr::mutate(
       z_infer = log1p(.data$y_obs),
@@ -84,5 +125,5 @@ observed_data <- function(data, p_one, p_switch) {
       f_infer = .data$z_infer - .data$mu_infer,
       .by = id
     ) |>
-    dplyr::select(dplyr::all_of(c("id", "t", "lat", "lon", "y_obs", "mu_infer", "z_infer", "f_infer")))
+    dplyr::select(dplyr::any_of(c("id", "t", "lat", "lon", "y_obs", "mu_infer", "z_infer", "f_infer", "outlier")))
 }

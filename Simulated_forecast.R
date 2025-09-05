@@ -1,5 +1,4 @@
 # remotes::install_github("mrc-ide/weave@pcg")
-source("R/missing.R")
 source("R/simulate.R")
 library(weave)
 library(progress)
@@ -44,14 +43,8 @@ periodic_scale = 1
 long_term_scale = 52
 # period: duration of the repeating cycle (e.g., 52 weeks for annual seasonality)
 period = 52
-# p_one: probability that a new cluster begins with a missing value.
-#   - higher p_one: more missing data overall.
-#   - lower p_one: less missing data overall.
-p_one = 0
-# p_switch: probability of switching between missing and observed states.
-#   - lower p_switch: longer sequences (clusters) of missingness or non-missingness.
-#   - higher p_switch: shorter clusters, more frequent switching between states.
-p_switch = 0
+# end: Add NAs at end of observations to allow forecast sim
+end = 52
 # ------------------------------------------------------------------------------
 
 # Simulated data ---------------------------------------------------------------
@@ -83,12 +76,8 @@ true_data <- simulate_data(
 )
 
 obs_data <- true_data |>
-  mutate(
-    y = ifelse(t > 200, NA, y)
-  ) |>
   observed_data(
-  p_one = p_one,
-  p_switch = p_switch
+  end = end
 )
 
 space_pd <- data.frame(
@@ -120,7 +109,7 @@ hf_labeller <- function(value) {
   paste("HF:", value)
 }
 
-sim_data <- ggplot() +
+sim_plot <- ggplot() +
   geom_point(data = true_data, aes(x = t, y = y), size = 1, colour = "red") +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 1, colour = "black") +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
@@ -154,7 +143,7 @@ system.time({
 })
 
 
-fit_plot <- sim_data +
+fit_plot <- sim_plot +
   geom_ribbon(
     data = fit_data,
     aes(x = t, ymin = pred_Q2.5, ymax = pred_Q97.5, fill = id), alpha = 0.25
