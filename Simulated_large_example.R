@@ -1,4 +1,5 @@
 # remotes::install_github("mrc-ide/weave@pcg")
+source("R/simulate.R")
 library(weave)
 library(progress)
 library(ggplot2)
@@ -134,7 +135,7 @@ sim_data <- ggplot() +
 
 # Infer kernel hyper-parameters ------------------------------------------------
 infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
-infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE)
+infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE, lower = c(0.1, 12), upper = c(10, 200))
 
 hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_time$long_term_scale)
 #hyperparameters <- c(3, 1, 200)
@@ -147,7 +148,6 @@ hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_
 system.time({
   fit_data <- fit(obs_data, coordinates, hyperparameters, n, nt)
 })
-
 
 fit_plot <- sim_data +
   geom_ribbon(
