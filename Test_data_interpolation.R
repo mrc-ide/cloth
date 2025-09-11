@@ -12,7 +12,7 @@ library(lubridate)
 sle_raw <- readRDS("data/SLE_routine_HF_malaria_outputs_with_chiefdom_centroids.rds")
 
 set.seed(12345)
-n_hf <- 36 * 2
+n_hf <- 36 * 4
 
 sle <- sle_raw |>
   filter(variable == "Malaria treated with ACT <24 hours 15+y_X") |>
@@ -42,8 +42,8 @@ obs_data <- weave:::data_process(sle, name_2, name_3, HF) |>
     f_infer = .data$z_infer - .data$mu_infer,
     .by = id
   ) |>
-  filter(id %in% sample(unique(id), n_hf, replace = FALSE)) |>
-  #filter(name_2 %in% c("BO")) |>
+  #filter(id %in% sample(unique(id), n_hf, replace = FALSE)) |>
+  filter(name_2 %in% c("BOMBALI", "BO")) |>
   mutate(name = paste0(name_2, "|", HF))
 
 mean(is.na(obs_data$y_obs))
@@ -69,20 +69,33 @@ sim_plot <- ggplot() +
 # Infer kernel hyper-parameters ------------------------------------------------
 n <- length(levels(obs_data$id))
 nt <- max(obs_data$t)
-infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
-infer_time <- infer_time_kernel_params(obs_data, 12, nt = nt, n = n, plot = TRUE)
-hyperparameters <- c(0.0000001, infer_time$periodic_scale / 2, infer_time$long_term_scale)
+coordinates <- unique(obs_data[, c("id", "lat", "lon")])
+
+res <- tune_hyperparameters_optim(
+  obs_data = obs_data,
+  coordinates = coordinates,
+  n_sites_sample = 50,
+  K_folds = 5,
+  init = c(space = 0.1, t_per = 0.5, t_long = 22),
+  lower = c(space =  0.0001, t_per =  0.01, t_long = period * 1.5),
+  upper = c(space = 100, t_per = 4, t_long = 3 * period),
+  period = 12
+)
+res$best_theta
+hyperparameters <- res$best_theta
 # ------------------------------------------------------------------------------
 
 # Fit --------------------------------------------------------------------------
-coordinates <- unique(obs_data[, c("id", "lat", "lon")])
+
 system.time({
-  fit_data <- fit(obs_data, coordinates, hyperparameters, n, nt)
+  fit_data <- fit(obs_data, coordinates, hyperparameters, n, nt, period = 12)
 })
 
 
 fit_plot <- sim_plot +
   geom_vline(xintercept = 12 * 1:7, linetype = 2, col = "grey40") +
+  geom_vline(xintercept =  77, col = "chartreuse3") +
+  geom_vline(xintercept =  65, col = "dodgerblue") +
   geom_ribbon(
     data = fit_data,
     aes(x = t, ymin = pred_Q2.5, ymax = pred_Q97.5, fill = id), alpha = 0.25
@@ -95,6 +108,13 @@ fit_plot <- sim_plot +
     data = fit_data,
     aes(x = t, y = data_Q50, col = id), linewidth = 1
   ) +
+  geom_point(
+    data = filter(fit_data, is.na(y_obs)),
+    aes(x = t, y = data_Q50, col = id), colour = "deeppink", size = 0.4
+  ) +
+  theme(strip.text = element_text(size = 4)) +
   ggtitle("Filling missingness")
 fit_plot
 # ------------------------------------------------------------------------------
+
+ggsave("plots/fit_plot_large_Bo_Bombali.pdf", fit_plot, width = 30, height = 20, limitsize = FALSE)

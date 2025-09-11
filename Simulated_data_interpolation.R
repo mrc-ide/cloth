@@ -133,14 +133,21 @@ sim_plot <- ggplot() +
 # ------------------------------------------------------------------------------
 
 # Infer kernel hyper-parameters ------------------------------------------------
-infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
-infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE, lower = c(0.1, 52), upper = c(10, 52 * 3))
-
-hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_time$long_term_scale)
-#hyperparameters <- c(3, 1, 200)
-## Options
-# Fix these conservatively - simulated sensitvity analyses?
-# Fit Bayesian with priors
+#infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
+#infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE, lower = c(0.1, 52), upper = c(10, 52 * 3))
+#hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_time$long_term_scale)
+res <- tune_hyperparameters_optim(
+  obs_data = obs_data,
+  coordinates = coordinates,
+  n_sites_sample = 25,
+  K_folds = 10,
+  init = c(space = 3, t_per = 4, t_long = 12),
+  lower = c(space =  0.01, t_per =  0.1, t_long =  1),
+  upper = c(space = 100, t_per = 100, t_long = 200),
+  period = 52
+)
+res$best_theta
+hyperparameters <- res$best_theta
 # ------------------------------------------------------------------------------
 
 # Fit --------------------------------------------------------------------------
