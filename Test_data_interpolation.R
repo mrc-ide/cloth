@@ -8,6 +8,7 @@ library(patchwork)
 library(sf)
 library(lubridate)
 
+period <- 12
 
 sle_raw <- readRDS("data/SLE_routine_HF_malaria_outputs_with_chiefdom_centroids.rds")
 
@@ -44,7 +45,7 @@ obs_data <- weave:::data_process(sle, name_2, name_3, HF) |>
   ) |>
   #filter(id %in% sample(unique(id), n_hf, replace = FALSE)) |>
   filter(name_2 %in% c("BOMBALI", "BO")) |>
-  mutate(name = paste0(name_2, "|", HF))
+  mutate(name = paste0(name_2, "|", name_3, "|",  HF))
 
 mean(is.na(obs_data$y_obs))
 length(unique(obs_data$id))
@@ -77,8 +78,8 @@ res <- tune_hyperparameters_optim(
   n_sites_sample = 50,
   K_folds = 5,
   init = c(space = 0.1, t_per = 0.5, t_long = 22),
-  lower = c(space =  0.0001, t_per =  0.01, t_long = period * 1.5),
-  upper = c(space = 100, t_per = 4, t_long = 3 * period),
+  lower = c(space =  0.0001, t_per =  0.01, t_long = 1),
+  upper = c(space = 100, t_per = 100, t_long = 3 * period),
   period = 12
 )
 res$best_theta
@@ -112,9 +113,9 @@ fit_plot <- sim_plot +
     data = filter(fit_data, is.na(y_obs)),
     aes(x = t, y = data_Q50, col = id), colour = "deeppink", size = 0.4
   ) +
-  theme(strip.text = element_text(size = 4)) +
+  theme(strip.text = element_text(size = 2)) +
   ggtitle("Filling missingness")
-fit_plot
+#fit_plot
 # ------------------------------------------------------------------------------
 
-ggsave("plots/fit_plot_large_Bo_Bombali.pdf", fit_plot, width = 30, height = 20, limitsize = FALSE)
+# ggsave("plots/fit_plot_large_Bo_Bombali.pdf", fit_plot, width = 30, height = 20, limitsize = FALSE)
