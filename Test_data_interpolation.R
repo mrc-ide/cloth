@@ -119,3 +119,5 @@ fit_plot <- sim_plot +
 # ------------------------------------------------------------------------------
 
 # ggsave("plots/fit_plot_large_Bo_Bombali.pdf", fit_plot, width = 30, height = 20, limitsize = FALSE)
+
+# ggsave("plots/fit_plot_large_SLE.pdf", fit_plot, width = 80, height = 60, limitsize = FALSE)

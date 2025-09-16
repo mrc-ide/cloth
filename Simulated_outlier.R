@@ -25,13 +25,13 @@ set.seed(321234)
 # Number of sites
 n = 25
 # Number of timesteps
-nt = 52 * 5
+nt = 52 * 3
 # Site mean case count
-site_means = round(runif(n, 10, 100))
+site_means = round(runif(n, 2, 100))
 # length_scale: determines how quickly correlation decays with distance
 #   - higher length_scale: correlation persists over longer distances (smoother spatial variation)
 #   - lower length_scale: correlation decays rapidly, indicating localised variation
-length_scale <- 10
+length_scale <- 2
 # periodic_scale: strength of repeating (seasonal or cyclical) patterns
 #   - higher periodic_scale: stronger seasonal patterns
 #   - lower periodic_scale: weaker seasonal patterns
@@ -39,7 +39,7 @@ periodic_scale = 1
 # long_term_scale: scale controlling decay rate of long-term temporal correlation
 #   - higher long_term_scale: smoother long-term trends (correlation persists longer)
 #   - lower long_term_scale: rapid loss of correlation, short-term variation dominates
-long_term_scale = 300
+long_term_scale = 100
 # period: duration of the repeating cycle (e.g., 52 weeks for annual seasonality)
 period = 52
 # m_one: prob of outlier
@@ -78,16 +78,12 @@ true_data <- simulate_data(
   time_k = time_k
 )
 
-#make_outlier <- sample(1:nrow(true_data), 50)
-#true_data$y[make_outlier] <- true_data$y[make_outlier] * 2
-
 obs_data <- true_data |>
   observed_data(
     m_one = m_one,
     m_switch = m_switch,
     m_factor = m_factor
   )
-#obs_data$outlier[make_outlier] <- 1
 
 space_pd <- data.frame(
   distance = 1:100
@@ -120,7 +116,7 @@ hf_labeller <- function(value) {
 
 sim_plot <- ggplot() +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 1, colour = "black") +
-  geom_point(data = filter(obs_data, outlier == 1), aes(x = t, y = y_obs), size = 1, colour = "red") +
+  geom_point(data = filter(obs_data, outlier == 1), aes(x = t, y = y_obs), size = 1, colour = "chartreuse3") +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
   facet_wrap(~ id, scales = "free_y", labeller = labeller(id = hf_labeller)) +
   ylab("Cases") +
@@ -136,14 +132,19 @@ sim_plot <- ggplot() +
 # ------------------------------------------------------------------------------
 
 # Infer kernel hyper-parameters ------------------------------------------------
-infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
-infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE)
-
-hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_time$long_term_scale)
-#hyperparameters <- c(3, 1, 200)
-## Options
-# Fix these conservatively - simulated sensitvity analyses?
-# Fit Bayesian with priors
+res <- tune_hyperparameters_optim(
+  obs_data = obs_data,
+  coordinates = coordinates,
+  n_sites_sample = 5,
+  K_folds = 5,
+  init = c(space = 3, t_per = 4, t_long = period * 2),
+  lower = c(space =  0.01, t_per =  0.1, t_long =  period),
+  upper = c(space = 100, t_per = 100, t_long = period * 5),
+  period = 52
+)
+res$best_theta
+hyperparameters <- res$best_theta
+#hyperparameters <- c(length_scale, periodic_scale, long_term_scale)
 # ------------------------------------------------------------------------------
 
 # Fit --------------------------------------------------------------------------
