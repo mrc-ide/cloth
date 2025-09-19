@@ -13,7 +13,7 @@ period <- 12
 sle_raw <- readRDS("data/SLE_routine_HF_malaria_outputs_with_chiefdom_centroids.rds")
 
 set.seed(12345)
-n_hf <- 36 * 4
+n_hf <- 12
 
 sle <- sle_raw |>
   filter(variable == "Malaria treated with ACT <24 hours 15+y_X") |>

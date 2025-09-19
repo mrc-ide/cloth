@@ -23,7 +23,7 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 25
+n = 12
 # Number of timesteps
 nt = 52 * 3
 # Site mean case count
@@ -139,8 +139,8 @@ sim_plot <- ggplot() +
 res <- tune_hyperparameters_optim(
   obs_data = obs_data,
   coordinates = coordinates,
-  n_sites_sample = 25,
-  K_folds = 10,
+  n_sites_sample = 5,
+  K_folds = 5,
   init = c(space = 3, t_per = 4, t_long = 12),
   lower = c(space =  0.01, t_per =  0.1, t_long =  1),
   upper = c(space = 100, t_per = 100, t_long = 200),
@@ -148,6 +148,7 @@ res <- tune_hyperparameters_optim(
 )
 res$best_theta
 hyperparameters <- res$best_theta
+hyperparameters <- c(length_scale, periodic_scale, long_term_scale)
 # ------------------------------------------------------------------------------
 
 # Fit --------------------------------------------------------------------------
