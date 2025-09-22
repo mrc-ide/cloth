@@ -23,7 +23,7 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 12
+n = 12 * 2
 # Number of timesteps
 nt = 52 * 3
 # Site mean case count

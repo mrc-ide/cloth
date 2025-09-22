@@ -86,6 +86,11 @@ draws <- lapply(1:50, function(x){
 }) |>
   bind_rows()
 
+
+# approximation
+#obs_data$l <- test_fit(obs_data, coordinates, hyperparameters, n, nt, q = 0.025)
+#obs_data$h<- test_fit(obs_data, coordinates, hyperparameters, n, nt, q = 0.975)
+
 bounds <- draws |>
   summarise(
     l = quantile(r, 0.025),
@@ -102,5 +107,56 @@ ggplot() +
   geom_line(data = obs_data, aes(x = t, y = posterior_mean), col = "deeppink") +
   #geom_point(data = true_data, aes(x = t, y = y), size = 0.2, colour = "red") +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 0.4, colour = "black") +
+  geom_line(data = obs_data, aes(x = t, y = l), col = "chartreuse") +
+  geom_line(data = obs_data, aes(x = t, y = h), col = "chartreuse") +
   facet_wrap( ~ id, scales = "free_y") +
-  theme_bw()
+  theme_bw()# + scale_y_log10()
+
+
+# 1) Low-rank factors for space and time (use your favourite: pivoted chol or eig trunc)
+lr_space <- function(space_mat, r_s) { # returns n x r_s
+  eig <- eigen(space_mat, symmetric = TRUE)
+  idx <- seq_len(r_s)
+  eig$vectors[, idx, drop=FALSE] %*% diag(sqrt(pmax(eig$values[idx], 0)), r_s)
+}
+lr_time <- function(time_mat, r_t) { # returns nt x r_t
+  eig <- eigen(time_mat, symmetric = TRUE)
+  idx <- seq_len(r_t)
+  eig$vectors[, idx, drop=FALSE] %*% diag(sqrt(pmax(eig$values[idx], 0)), r_t)
+}
+
+# 2) Build Kronecker low rank L = Ls ⊗ Lt  (N x r)
+build_L <- function(Ls, Lt) {
+  # Khatri–Rao-friendly: L = kron(Ls, Lt)
+  kronecker(Ls, Lt)  # N x (r_s * r_t)
+}
+
+gp_var_diag_woodbury <- function(obs_idx, N, space_mat, time_mat, noise_var,
+                                 r_s = 16L, r_t = 16L) {
+  n  <- nrow(space_mat); nt <- nrow(time_mat)
+  stopifnot(n * nt == N)
+
+  Ls <- lr_space(space_mat, r_s)    # n x r_s
+  Lt <- lr_time(time_mat,  r_t)     # nt x r_t
+  L  <- build_L(Ls, Lt)             # N x r (r = r_s * r_t)
+
+  # Observed rows and weights
+  L_S   <- L[obs_idx, , drop = FALSE]                    # m x r
+  Dinv  <- 1 / noise_var                                 # length m
+  # G = L_S^T D^{-1} L_S  (r x r) via weighted crossprod
+  G     <- crossprod(L_S * Dinv, L_S)                    # r x r
+  # Solve (I + G) once; compute M = G (I+G)^{-1}
+  IR    <- diag(ncol(G))
+  C     <- chol(IR + G)                                  # r x r
+  M     <- backsolve(C, forwardsolve(t(C), G))           # G %*% (I+G)^{-1}
+
+  # diag(K) under low-rank: rowSums(L^2)
+  kdiag <- rowSums(L * L)                                # length N
+
+  # c_i are the rows of L (as column vectors); compute c_i^T M c_i
+  # Efficiently: diag(L %*% M %*% t(L)) = rowSums((L %*% M) * L)
+  LM    <- L %*% M                                       # N x r
+  qform <- rowSums(LM * L)                               # length N
+
+  pmax(kdiag - qform, 0)
+}
