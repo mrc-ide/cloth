@@ -131,8 +131,7 @@ sim_plot <- ggplot() +
   ggtitle("Simulated data")
 # ------------------------------------------------------------------------------
 
-
-estimate <- fit(obs_data, nt, period, n_sites = 10, mask_prop = 0.2)
+estimate <- fit(obs_data, coordinates, nt, period, n_sites = 10, mask_prop = 0.2)
 hyperparameters <- estimate$par
 
 state <- gp_build_state(obs_data, coordinates, hyperparameters, n, nt, period)
@@ -177,7 +176,7 @@ roc_plot <- ggplot(data = roc_pd, aes(x = specificities, y = sensitivities)) +
   theme_bw()
 best_thr <- pROC::coords(roc_obj, x = "best", best.method = "youden", transpose = TRUE)[1]
 
-sim_plot <- ggplot() +
+outlier_plot <- ggplot() +
   geom_line(data = true_data, aes(x = t, y = lambda)) +
   geom_point(data = obs_data, aes(x = t, y = y_obs, colour = surprisal, size = surprisal)) +
   geom_point(
@@ -197,8 +196,6 @@ sim_plot <- ggplot() +
     strip.text = element_text(size = 8, face = "bold"),
     panel.spacing = unit(0.5, "lines")
   ) +
-  ggtitle("Simulated data")
+  ggtitle("Outlier detection (simulated data)")
 
-
-
-
+ggsave("plots/outlier_plot.pdf", outlier_plot, height = 8, width = 15)

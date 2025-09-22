@@ -126,7 +126,7 @@ sim_plot <- ggplot() +
 # ------------------------------------------------------------------------------
 
 
-estimate <- fit(obs_data, nt, period, n_sites = 10, mask_prop = 0.2)
+estimate <- fit(obs_data, coordinates, nt, period, n_sites = 10, mask_prop = 0.2)
 hyperparameters <- estimate$par
 
 state <- gp_build_state(obs_data, coordinates, hyperparameters, n, nt, period)
@@ -144,12 +144,22 @@ interval <- bounds(
 obs_data <- obs_data |>
   left_join(interval)
 
-fit_plot <- ggplot() +
+forecast_plot <- ggplot() +
   geom_ribbon(data = obs_data, aes(x = t, ymin = q0.025, ymax = q0.975, fill = id), alpha = 0.5) +
   geom_ribbon(data = obs_data, aes(x = t, ymin = q0.25, ymax = q0.75, fill = id), alpha = 0.75) +
   geom_line(data = obs_data, aes(x = t, y = posterior_mean), col = "deeppink") +
   geom_point(data = true_data, aes(x = t, y = y), size = 0.05, colour = "red") +
   geom_point(data = obs_data, aes(x = t, y = y_obs), size = 0.4, colour = "black") +
-  facet_wrap( ~ id, scales = "free_y") +
+  facet_wrap(~ id, scales = "free_y", labeller = labeller(id = hf_labeller)) +
+  ylab("Cases") +
+  xlab("Week") +
   theme_bw() +
-  theme(legend.position = "none")
+  theme(
+    legend.position = "none",
+    strip.background = element_rect(fill = "white", colour = "grey50"),
+    strip.text = element_text(size = 8, face = "bold"),
+    panel.spacing = unit(0.5, "lines")
+  ) +
+  ggtitle("Forcasting (simulated data)")
+
+ggsave("plots/forecast_plot.pdf", forecast_plot, height = 8, width = 15)
