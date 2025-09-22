@@ -25,10 +25,19 @@ gp_build_state <- function(obs_data, coordinates, hyperparameters, n, nt, period
   obs_idx   <- which(!is.na(obs_data$y_obs))
   N         <- n * nt
 
-  # Working response (log scale), heteroscedastic nugget
+  # Adjustment for fitting Poisson on the log scale:
+  ## approximate count noise so the GP learns the underlying signal correctly.
   y_work    <- obs_data$f_infer[obs_idx]
   lam_hat   <- exp(obs_data$mu_infer[obs_idx])
   noise_var <- lam_hat / (lam_hat + 1)^2
+
+  # For NB assumption (if implemented)
+  if(FALSE){
+    # NB working likelihood on the log-scale (size = k):
+    noise_var <- (lam_hat + lam_hat^2 / k) / (lam_hat + 1)^2
+    # (optional: stabilise)
+    noise_var <- pmax(noise_var, 1e-8)
+  }
 
   # Preconditioner diag(K) = diag(space) ⊗ diag(time)
   kdiag_full <- .kdiag_from_factors(diag(space_mat), diag(time_mat), n, nt)
