@@ -23,7 +23,7 @@ library(patchwork)
 # True parameters --------------------------------------------------------------
 set.seed(321234)
 # Number of sites
-n = 12 * 2
+n = 12 * 3
 # Number of timesteps
 nt = 52 * 3
 # Site mean case count
@@ -130,52 +130,40 @@ sim_plot <- ggplot() +
     panel.spacing = unit(0.5, "lines")
   ) +
   ggtitle("Simulated data")
-# ------------------------------------------------------------------------------
 
-# Infer kernel hyper-parameters ------------------------------------------------
-#infer_space <- infer_space_kernel_params(obs_data, nt = nt, n = n, TRUE)
-#infer_time <- infer_time_kernel_params(obs_data, 52, nt = nt, n = n, plot = TRUE, lower = c(0.1, 52), upper = c(10, 52 * 3))
-#hyperparameters <- c(infer_space$length_scale, infer_time$periodic_scale, infer_time$long_term_scale)
-res <- tune_hyperparameters_optim(
-  obs_data = obs_data,
-  coordinates = coordinates,
-  n_sites_sample = 5,
-  K_folds = 5,
-  init = c(space = 3, t_per = 4, t_long = 12),
-  lower = c(space =  0.01, t_per =  0.1, t_long =  1),
-  upper = c(space = 100, t_per = 100, t_long = 200),
-  period = 52
+
+estimate <- fit(obs_data, nt, period, n_sites = 10, mask_prop = 0.2)
+hyperparameters <- estimate$par
+
+state <- gp_build_state(obs_data, coordinates, hyperparameters, n, nt, period)
+
+# Posterior mean:
+obs_data$posterior_mean <- gp_posterior_mean(state)
+
+interval <- bounds(
+  state,
+  n_lambda = 25,
+  n_draw = 100,
+  quantiles = c(0.025, 0.25, 0.75, 0.975)
 )
-res$best_theta
-hyperparameters <- res$best_theta
-hyperparameters <- c(length_scale, periodic_scale, long_term_scale)
-# ------------------------------------------------------------------------------
 
-# Fit --------------------------------------------------------------------------
-system.time({
-  fit_data <- fit(obs_data, coordinates, hyperparameters, n, nt)
-})
+obs_data <- obs_data |>
+  left_join(interval)
 
-fit_plot <- sim_plot +
-  geom_ribbon(
-    data = fit_data,
-    aes(x = t, ymin = pred_Q2.5, ymax = pred_Q97.5, fill = id), alpha = 0.25
-  ) +
-  geom_ribbon(
-    data = fit_data,
-    aes(x = t, ymin = pred_Q25, ymax = pred_Q75, fill = id, alpha = 0.5)
-  ) +
-  geom_line(
-    data = fit_data,
-    aes(x = t, y = data_Q50, col = id), linewidth = 1
-  ) +
-  ggtitle("Filling missingness")
-fit_plot
+fit_plot <- ggplot() +
+  geom_ribbon(data = obs_data, aes(x = t, ymin = q0.025, ymax = q0.975, fill = id), alpha = 0.5) +
+  geom_ribbon(data = obs_data, aes(x = t, ymin = q0.25, ymax = q0.75, fill = id), alpha = 0.75) +
+  geom_line(data = obs_data, aes(x = t, y = posterior_mean), col = "deeppink") +
+  geom_point(data = true_data, aes(x = t, y = y), size = 0.05, colour = "red") +
+  geom_point(data = obs_data, aes(x = t, y = y_obs), size = 0.4, colour = "black") +
+  facet_wrap( ~ id, scales = "free_y") +
+  theme_bw() +
+  theme(legend.position = "none")
 
 compare_pd <- data.frame(
-  Modelled = fit_data$data_Q50,
+  Modelled = obs_data$posterior_mean,
   True = true_data$y,
-  type = factor(ifelse(is.na(fit_data$y_obs), "Missing", "Observed"), levels = c("Observed", "Missing"))
+  type = factor(ifelse(is.na(obs_data$y_obs), "Missing", "Observed"), levels = c("Observed", "Missing"))
 )
 
 comp_plot <- ggplot() +
@@ -184,5 +172,4 @@ comp_plot <- ggplot() +
   scale_colour_manual(values = c("chartreuse3", "darkmagenta")) +
   scale_alpha_manual(values = c(0.25, 1)) +
   theme_bw()
-
 
