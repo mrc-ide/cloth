@@ -70,7 +70,8 @@ generate_clustered_binary <- function(n, p_one, p_switch) {
 simulate_data <- function(
     n, nt,
     coordinates,
-    space_k, time_k) {
+    space_k, time_k,
+    size = NULL) {
 
   output_df <- tidyr::expand_grid(
     id = factor(1:n),
@@ -82,9 +83,20 @@ simulate_data <- function(
     dplyr::mutate(
       f = quick_mvnorm(space_k, time_k),
       z = .data$mu + .data$f,
-      lambda = exp(.data$z),
-      y = rpois(n * nt, .data$lambda)
+      lambda = exp(.data$z)
     )
+
+  if(is.null(size)){
+    output_df <- output_df |>
+      dplyr::mutate(
+        y = rpois(n * nt, .data$lambda)
+      )
+  } else {
+    output_df <- output_df |>
+      dplyr::mutate(
+        y = rnbinom(n * nt, mu = .data$lambda, size = size)
+      )
+  }
 
   return(output_df)
 }
