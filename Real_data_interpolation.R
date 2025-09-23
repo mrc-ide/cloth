@@ -13,7 +13,7 @@ period <- 12
 sle_raw <- readRDS("data/SLE_routine_HF_malaria_outputs_with_chiefdom_centroids.rds")
 
 set.seed(12345)
-n_hf <- 12
+n_hf <- 1000
 
 sle <- sle_raw |>
   filter(variable == "Malaria treated with ACT <24 hours 15+y_X") |>
@@ -43,8 +43,8 @@ obs_data <- weave:::data_process(sle, name_2, name_3, HF) |>
     f_infer = .data$z_infer - .data$mu_infer,
     .by = id
   ) |>
-  #filter(id %in% sample(unique(id), n_hf, replace = FALSE)) |>
-  filter(name_2 %in% c("BOMBALI", "BO", "FALABA")) |>
+  filter(id %in% sample(unique(id), n_hf, replace = FALSE)) |>
+  #filter(name_2 %in% c("BOMBALI", "BO", "FALABA")) |>
   mutate(name = paste0(name_2, "|", name_3, "|",  HF))
 
 mean(is.na(obs_data$y_obs))
